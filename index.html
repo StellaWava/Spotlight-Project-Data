@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome! This is Spotlight Project Infrastructure data collected in 2023 by YouthMappers</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            color: white;
+            background-color: #002b36; /* dark dirty blue */
+        }
+        header, footer {
+            background-color: #073642; /* slightly lighter dark dirty blue */
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+        }
+        header h1, footer p {
+            margin: 0;
+        }
+        main {
+            display: flex;
+            flex: 1;
+        }
+        #left {
+            width: 40%;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            background-color: #073642; /* slightly lighter dark dirty blue */
+        }
+        #right {
+            width: 60%;
+            padding: 20px;
+            background-color: white;
+            color: #002b36; /* dark dirty blue */
+        }
+        h1, h2, p {
+            margin: 0 0 20px 0;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        button {
+            margin-right: 10px;
+            background-color: #dc7633; /* orange */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #e67e22; /* lighter orange */
+        }
+        select, input {
+            padding: 10px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+            color: #002b36; /* dark dirty blue */
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/realm-web@1.4.0/dist/bundle.iife.js"></script>
+    <script>
+        const app = new Realm.App({ id: "power-msadfub" });
+
+        async function searchCategory() {
+            const category = document.getElementById('category').value;
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            // Authenticate anonymously
+            const credentials = Realm.Credentials.anonymous();
+            const user = await app.logIn(credentials);
+
+            // Get the collection
+            const mongodb = app.currentUser.mongoClient("mongodb-atlas");
+            const collection = mongodb.db("data1").collection("KLA_ENERGY");
+
+            // Query the collection
+            const query = category ? { power: category } : {};
+            const data = await collection.find(query);
+
+            if (data.length === 0) {
+                resultsDiv.innerHTML = '<p>No results found.</p>';
+            } else {
+                const table = document.createElement('table');
+                const headerRow = document.createElement('tr');
+                
+                // Create table headers
+                Object.keys(data[0]).forEach(key => {
+                    const headerCell = document.createElement('th');
+                    headerCell.innerText = key;
+                    headerRow.appendChild(headerCell);
+                });
+                table.appendChild(headerRow);
+
+                // Create table rows
+                data.forEach(item => {
+                    const row = document.createElement('tr');
+                    Object.values(item).forEach(value => {
+                        const cell = document.createElement('td');
+                        cell.innerText = value;
+                        row.appendChild(cell);
+                    });
+                    table.appendChild(row);
+                });
+
+                resultsDiv.appendChild(table);
+            }
+        }
+
+        async function downloadData(category) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            // Authenticate anonymously
+            const credentials = Realm.Credentials.anonymous();
+            const user = await app.logIn(credentials);
+
+            // Get the collection
+            const mongodb = app.currentUser.mongoClient("mongodb-atlas");
+            const collection = mongodb.db("data1").collection("KLA_ENERGY");
+
+            // Query the collection
+            const query = category ? { power: category } : {};
+            const data = await collection.find(query);
+
+            // Convert data to CSV
+            const csvContent = "data:text/csv;charset=utf-8," + 
+                Object.keys(data[0]).join(",") + "\n" + 
+                data.map(e => Object.values(e).join(",")).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", category ? `${category}_data.csv` : "data.csv");
+            document.body.appendChild(link); // Required for FF
+
+            link.click();
+        }
+
+        async function loadStats() {
+            const statsDiv = document.getElementById('category-stats');
+            statsDiv.innerHTML = '';
+
+            // Authenticate anonymously
+            const credentials = Realm.Credentials.anonymous();
+            const user = await app.logIn(credentials);
+
+            // Get the collection
+            const mongodb = app.currentUser.mongoClient("mongodb-atlas");
+            const collection = mongodb.db("data1").collection("KLA_ENERGY");
+
+            // Get category statistics
+            const pipeline = [
+                { "$group": { "_id": "$power", "count": { "$sum": 1 } } },
+                { "$sort": { "count": -1 } }
+            ];
+            const stats = await collection.aggregate(pipeline);
+
+            stats.forEach(stat => {
+                const statElement = document.createElement('p');
+                statElement.innerHTML = `<strong>${stat._id}:</strong> ${stat.count}`;
+                statsDiv.appendChild(statElement);
+            });
+        }
+
+        window.onload = loadStats;
+    </script>
+</head>
+<body>
+    <header>
+        <h1>Spotlight Project Infrastructure Data</h1>
+    </header>
+    <main>
+        <div id="left">
+            <h1>Project Brief</h1>
+            <p>The broad objective of this data is to support the exploration of power challenges faced by slum communities in obtaining a safe, legal, affordable, and reliable electrical connection. This study focuses on slum communities in the Ugandan capital city of Kampala. We will collaborate with the organization YouthMappers to perform infrastructure surveys in the slum communities.</p>
+            <p>The data product was collected by the local chapter of YouthMappers at Makerere University in Kampala and is a part of the methods deployed in the project. The students, together with community youths, visited 25 communities and mapped the locations of streetlamps, utility poles, transformers, among other infrastructure, as well as whether each building in the survey area has a visible electrical connection or not. A local electrician, as well as a representative from ACTogether, accompanied the YouthMappers teams.</p>
+            <p><strong>Credits:</strong></p>
+            <p>1. Lydia Letaru, Makerere University, Department of Surveying & Geomatics.</p>
+            <p>2. June Lukuyu, Systems Towards Infrastructure Monitoring and Analysis (STIMA) Lab, University of Massachusetts Amherst.</p>
+            <p>3. Elena van Hove Laboratory for Energy and Power Solutions (LEAPS), Arizona State University.</p>
+            <p>4. Jess Kersey, Energy and Resources Group, University of California Berkeley Global Energy Alliance for People and Planet.</p>
+        </div>
+        <div id="right">
+            <h2>Welcome! This is Spotlight Project Infrastructure data collected in 2023 by YouthMappers</h2>
+            <form onsubmit="event.preventDefault(); searchCategory();">
+                <label for="category">Search by Power Category:</label>
+                <select id="category" name="category">
+                    <option value="">All</option>
+                    <option value="pole">Pole</option>
+                    <option value="transformer">Transformer</option>
+                    <option value="tower">Tower</option>
+                    <option value="generator">Generator</option>
+                    <option value="portal">Portal</option>
+                    <option value="terminal">Terminal</option>
+                    <option value="substation">Substation</option>
+                    <option value="street_light">Street Light</option>
+                </select>
+                <button type="submit">Search</button>
+            </form>
+            <button onclick="downloadData()">Download All Data as CSV</button>
+            <button onclick="downloadData(document.getElementById('category').value)">Download Filtered Data as CSV</button>
+            <br><br>
+            <div id="results"></div>
+            <br><br>
+            <h2>Category Statistics</h2>
+            <div id="category-stats"></div>
+        </div>
+    </main>
+    <footer>
+        <p>Database: Stellamaris Nakacwa, Former EverywhereSheMaps Program Director.</p>
+    </footer>
+</body>
+</html>
